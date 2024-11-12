@@ -1,0 +1,39 @@
+import random
+import time
+from scapy.all import *
+
+def slow_port_scan(target_ip, ports, min_delay=0.5, max_delay=3.0):
+    open_ports = []
+
+    print(f"Starting slow port scan on {target_ip} with random delays between {min_delay} and {max_delay} seconds.")
+    
+    for port in ports:
+        #create a TCP SYN packet to the target IP and port
+        packet = IP(dst=target_ip)/TCP(dport=port, flags="S")
+        
+        #send the packet and wait for a response
+        response = sr1(packet, timeout=1, verbose=0)
+        
+        #check SYN-ACK
+        if response and response.haslayer(TCP) and response[TCP].flags == 0x12:
+            print(f"Port {port} is open.")
+            open_ports.append(port)
+            
+            #Send RST packet
+            sr(IP(dst=target_ip)/TCP(dport=port, flags="R"), timeout=1, verbose=0)
+        else:
+            print(f"Port {port} is closed or filtered.")
+        
+        delay = random.uniform(min_delay, max_delay)
+        print(f"Waiting {delay:.2f} seconds before the next scan.")
+        time.sleep(delay)
+    
+    print("Scan complete.")
+    return open_ports
+
+#parameters
+target_ip = "192.168.56.103"  # Replace with the target IP address
+ports_to_scan = range(20, 1025)  # Range of ports to scan
+
+open_ports = slow_port_scan(target_ip, ports_to_scan)
+print(f"Open ports: {open_ports}")
